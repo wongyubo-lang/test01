@@ -1,23 +1,216 @@
-
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>일일 업무 보고서 생성기</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script type="importmap">
-    {
-      "imports": {
-        "react": "https://esm.sh/react@18.3.1",
-        "react-dom/client": "https://esm.sh/react-dom@18.3.1/client",
-        "@google/genai": "https://esm.sh/@google/genai@0.14.0"
-      }
-    }
-  </script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>일일 업무 보고서 생성기 (간편 버전)</title>
+    <!-- 1. Tailwind CSS (디자인) 불러오기 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 2. React (앱의 뼈대) 불러오기 -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <!-- 3. Babel (코드를 브라우저가 이해하게 번역) 불러오기 -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- 4. Google Gemini AI 라이브러리 불러오기 -->
+    <script type="module">
+        import { GoogleGenAI } from 'https://esm.sh/@google/genai@0.14.0';
+        window.GoogleGenAI = GoogleGenAI;
+    </script>
 </head>
 <body class="bg-slate-100 dark:bg-slate-900">
-  <div id="root"></div>
-  <script type="module" src="/index.tsx"></script>
+    <div id="root"></div>
+
+    <!-- 5. 우리 앱의 모든 코드를 여기에 넣습니다! -->
+    <script type="text/babel">
+        // =================================================================
+        // 중요! 여기에 당신의 Gemini API 키를 붙여넣으세요!
+        // =================================================================
+        const API_KEY = "YOUR_GEMINI_API_KEY_HERE"; 
+        // 경고: 이 방법은 개인적인 컴퓨터에서 테스트하는 용도입니다.
+        // 절대로 이 파일을 다른 사람에게 공유하거나 웹사이트에 올리지 마세요. API 키가 노출될 수 있습니다.
+        // =================================================================
+
+        // --- 아이콘 코드 ---
+        const SparklesIcon = (props) => (
+            <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9.94 14.34 8.5 15.78l-4.24-4.24 1.41-1.41 4.24 4.24Z" /> <path d="m14 6-1-1-4.24 4.24 1 1L14 6Z" /> <path d="M22 12a4.5 4.5 0 0 0-4.5-4.5 4.5 4.5 0 0 0-4.5 4.5 4.5 4.5 0 0 0 4.5 4.5A4.5 4.5 0 0 0 22 12Z" /> <path d="M15.78 8.5 14.34 9.94l4.24 4.24 1.41-1.41-4.24-4.24Z" /> <path d="m6 14 1 1 4.24-4.24-1-1L6 14Z" /> <path d="M12 2a4.5 4.5 0 0 0-4.5 4.5A4.5 4.5 0 0 0 12 11a4.5 4.5 0 0 0 4.5-4.5A4.5 4.5 0 0 0 12 2Z" />
+            </svg>
+        );
+        const ClipboardIcon = (props) => (
+            <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect width="8" height="4" x="8" y="2" rx="1" ry="1" /> <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+            </svg>
+        );
+        const CheckIcon = (props) => (
+            <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+            </svg>
+        );
+
+        // --- AI 기능 코드 ---
+        let ai;
+        if (API_KEY && API_KEY !== "YOUR_GEMINI_API_KEY_HERE") {
+            ai = new window.GoogleGenAI({ apiKey: API_KEY, vertexai: true });
+        }
+
+        async function generateDailyReport(todayTasks, issues, tomorrowPlans) {
+            if (!ai) {
+                throw new Error("Gemini API 키가 설정되지 않았습니다. HTML 파일 상단의 API_KEY 변수를 확인해주세요.");
+            }
+            const model = 'gemini-2.5-flash';
+            const prompt = `
+                당신은 프로페셔널한 업무 비서입니다. 아래 제공된 정보를 바탕으로, 정중하고 간결한 형식의 한국어 일일 업무 보고서를 작성해주세요.
+                보고서는 명확한 제목과 구조를 가져야 합니다. 각 항목은 불렛포인트나 번호 목록을 사용하여 가독성을 높여주세요.
+                ---
+                [오늘 완료한 업무]
+                ${todayTasks || '특이사항 없음'}
+                [이슈 및 해결 방안]
+                ${issues || '특이사항 없음'}
+                [내일 진행할 업무]
+                ${tomorrowPlans || '특이사항 없음'}
+                ---
+                위 내용을 바탕으로 아래와 같은 형식의 완벽한 보고서를 생성해주세요.
+                [일일 업무 보고]
+                1. 금일 업무 진행 사항
+                   - (오늘 완료한 업무 내용을 바탕으로 정리)
+                2. 이슈 및 특이사항
+                   - (이슈 및 해결 방안 내용을 바탕으로 정리)
+                3. 익일 업무 계획
+                   - (내일 진행할 업무 내용을 바탕으로 정리)
+                항상 긍정적이고 전문적인 어조를 유지해주세요. 절대로 마크다운 문법(예: **, *, # 등)을 사용하지 말고, 순수 텍스트로만 보고서를 작성해주세요.
+            `;
+
+            try {
+                const response = await ai.models.generateContent({
+                    model: model,
+                    contents: { role: 'user', parts: [{ text: prompt }] },
+                });
+                return response.text;
+            } catch (error) {
+                console.error('Error generating report with Gemini API:', error);
+                throw new Error('Failed to generate report.');
+            }
+        }
+
+        // --- 메인 앱 코드 ---
+        const App = () => {
+            const { useState, useCallback } = React;
+            const [todayTasks, setTodayTasks] = useState('');
+            const [issues, setIssues] = useState('');
+            const [tomorrowPlans, setTomorrowPlans] = useState('');
+            const [generatedReport, setGeneratedReport] = useState('');
+            const [isLoading, setIsLoading] = useState(false);
+            const [error, setError] = useState(null);
+            const [isCopied, setIsCopied] = useState(false);
+
+            const handleGenerateReport = useCallback(async () => {
+                if (API_KEY === "YOUR_GEMINI_API_KEY_HERE") {
+                    setError('API 키를 먼저 설정해주세요! HTML 파일 상단의 API_KEY 변수를 당신의 키로 바꿔주세요.');
+                    return;
+                }
+                if (!todayTasks && !issues && !tomorrowPlans) {
+                    setError('보고서 내용을 하나 이상 입력해주세요.');
+                    return;
+                }
+                setIsLoading(true);
+                setError(null);
+                setGeneratedReport('');
+                try {
+                    const report = await generateDailyReport(todayTasks, issues, tomorrowPlans);
+                    setGeneratedReport(report);
+                } catch (err) {
+                    console.error(err);
+                    setError('보고서 생성 중 오류가 발생했습니다. F12를 눌러 콘솔 창에서 자세한 오류를 확인해주세요.');
+                } finally {
+                    setIsLoading(false);
+                }
+            }, [todayTasks, issues, tomorrowPlans]);
+
+            const handleCopy = useCallback(() => {
+                if (generatedReport) {
+                    navigator.clipboard.writeText(generatedReport);
+                    setIsCopied(true);
+                    setTimeout(() => setIsCopied(false), 2000);
+                }
+            }, [generatedReport]);
+
+            const InputSection = ({ title, value, onChange, placeholder }) => (
+                <div className="mb-6">
+                    <label className="block text-lg font-semibold text-slate-700 dark:text-slate-300 mb-2">{title}</label>
+                    <textarea
+                        value={value}
+                        onChange={onChange}
+                        placeholder={placeholder}
+                        className="w-full h-32 p-3 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 resize-none text-slate-800 dark:text-slate-200"
+                        rows={4}
+                    />
+                </div>
+            );
+
+            return (
+                <div className="min-h-screen bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-sans">
+                    <main className="max-w-4xl mx-auto px-4 py-8 sm:py-12">
+                        <header className="text-center mb-10">
+                            <h1 className="text-4xl sm:text-5xl font-extrabold text-slate-800 dark:text-white">AI 일일 업무 보고서 생성기</h1>
+                            <p className="mt-3 text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">오늘의 업무 내용을 입력하면 Gemini AI가 멋진 보고서 초안을 작성해 드립니다.</p>
+                        </header>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div className="bg-white dark:bg-slate-800/50 p-6 sm:p-8 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700">
+                                <h2 className="text-2xl font-bold mb-6 text-slate-800 dark:text-white">보고서 내용 입력</h2>
+                                <InputSection title="1. 오늘 완료한 업무" value={todayTasks} onChange={(e) => setTodayTasks(e.target.value)} placeholder="예: 신규 기능 A 개발 완료, 고객사 B 미팅 진행" />
+                                <InputSection title="2. 이슈 및 해결 방안" value={issues} onChange={(e) => setIssues(e.target.value)} placeholder="예: 로그인 API 오류 발생, 백엔드팀과 협력하여 해결" />
+                                <InputSection title="3. 내일 진행할 업무" value={tomorrowPlans} onChange={(e) => setTomorrowPlans(e.target.value)} placeholder="예: 기능 A 테스트 및 버그 수정, 주간 보고서 작성" />
+                                <button onClick={handleGenerateReport} disabled={isLoading} className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg transition-all duration-200 disabled:bg-indigo-400 disabled:cursor-not-allowed focus:outline-none focus:ring-4 focus:ring-indigo-500/50">
+                                    {isLoading ? (
+                                        <React.Fragment>
+                                            <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                            </svg>
+                                            생성 중...
+                                        </React.Fragment>
+                                    ) : (
+                                        <React.Fragment>
+                                            <SparklesIcon className="w-5 h-5" />
+                                            보고서 생성하기
+                                        </React.Fragment>
+                                    )}
+                                </button>
+                                {error && <p className="text-red-500 mt-4 text-center">{error}</p>}
+                            </div>
+                            <div className="bg-white dark:bg-slate-800/50 p-6 sm:p-8 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700">
+                                <div className="flex justify-between items-center mb-6">
+                                    <h2 className="text-2xl font-bold text-slate-800 dark:text-white">생성된 보고서</h2>
+                                    {generatedReport && (
+                                        <button onClick={handleCopy} className="flex items-center gap-2 text-sm bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 font-semibold py-2 px-3 rounded-lg transition-colors duration-200">
+                                            {isCopied ? <CheckIcon className="w-4 h-4 text-green-500" /> : <ClipboardIcon className="w-4 h-4" />}
+                                            {isCopied ? '복사 완료!' : '복사하기'}
+                                        </button>
+                                    )}
+                                </div>
+                                <div className="prose prose-slate dark:prose-invert max-w-none h-[500px] overflow-y-auto p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                                    {generatedReport ? (
+                                        <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed">{generatedReport}</pre>
+                                    ) : (
+                                        <div className="flex items-center justify-center h-full text-slate-500 dark:text-slate-400">
+                                            <p>왼쪽 양식을 채우고 보고서를 생성해주세요.</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                        <footer className="text-center mt-12 text-sm text-slate-500 dark:text-slate-400">
+                            <p>Powered by Google Gemini AI</p>
+                        </footer>
+                    </main>
+                </div>
+            );
+        };
+
+        // --- 앱을 화면에 그리는 마지막 코드 ---
+        const rootElement = document.getElementById('root');
+        const root = ReactDOM.createRoot(rootElement);
+        root.render(<App />);
+    </script>
 </body>
 </html>
